@@ -1,0 +1,32 @@
+services:
+  tailscale-vpn-service:
+    image: tailscale/tailscale:latest
+    container_name: tailscale-vpn-container
+    hostname: githubcodingoutlook-codingspace-vps   # 可自定义节点名
+    environment:
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+      - TS_SOCKET=/var/run/tailscale/tailscaled.sock
+      - TS_EXTRA_ARGS=--advertise-exit-node --accept-dns=false
+    volumes:
+      - tailscale-vpn-vm:/var/lib/tailscale          # 持久化登录状态
+      - /dev/net/tun:/dev/net/tun                    # TUN 网络支持
+      - /var/run/tailscale:/var/run/tailscale        # 套接字（方便外部命令）
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo 'Starting tailscaled...' &&
+        tailscaled --state=/var/lib/tailscale/tailscaled.state &
+        sleep 3 &&
+        echo 'Running tailscale up...' &&
+        tailscale up --advertise-exit-node --accept-dns=false --reset ||
+        tailscale status --json &&
+        tail -f /dev/null
+      "
+volumes:
+  tailscale-vpn-vm:
+    driver: local
+
